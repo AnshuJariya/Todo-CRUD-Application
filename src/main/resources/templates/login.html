@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Login</title>
+
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Login</h1>
+
+  <div th:if="${param.error}" class="error">
+    Invalid Username and Password
+  </div>
+
+  <form action="/login" method="post" autocomplete="off">
+
+    <input type="text"
+           name="username"
+           placeholder="Enter Username"
+           required
+           autocomplete="new-username">
+    <br>
+    <input type="password"
+           name="password"
+           placeholder="Enter Password"
+           required
+           autocomplete="new-password">
+
+    <br>
+    <button type="submit">Login</button>
+
+  </form>
+  <br>
+  <p>
+    Don't have an account?
+    <a href="/signup">Create New Account</a>
+  </p>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo CRUD Application</title>
+<!--    <link rel="stylesheet" href="/css/style.css">-->
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --background: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .form-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 12px 24px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .todo-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .todo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .todo-item:hover {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .todo-text {
+            font-size: 16px;
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            align-item : center
+        }
+
+        .btn-edit {
+            background-color: #f59e0b;
+            margin right : 5px;
+        }
+        .btn-edit:hover {
+            background-color: #d97706;
+        }
+
+        /* Note: Your current backend service logic handles updates and creations,
+           but lacks an explicit remove/delete endpoint. A placeholder for UI functionality is included. */
+        .btn-delete {
+            background-color: var(--danger);
+        }
+        .btn-delete:hover {
+            background-color: var(--danger-hover);
+        }
+        .logout-container{
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-top : 18px;
+        margin-left : 520px;
+        }
+    </style>
+</head>
+<body>
+
+<div>
+<div class="container">
+    <h1>📝 Todo App</h1>
+
+    <div class="form-group">
+        <input type="text" id="todoInput" placeholder="What needs to be done?">
+        <button id="submitBtn" onclick="handleSubmit()">Add Task</button>
+    </div>
+
+    <ul id="todoList" class="todo-list"></ul>
+</div>
+    <div class="logout-container">
+    <a href="/logout">
+        <button>Logout</button>
+    </a>
+    </div>
+
+</div>
+
+<script>
+    // Adjust this URL if your port or context path is different
+<!--    const API_BASE_URL = 'http://localhost:8080/todos';-->
+    const API_BASE_URL = '/todos';
+
+    let editTodoId = null; // Tracks if we are editing an existing item
+
+    // Fetch and display todos automatically on page load
+    document.addEventListener('DOMContentLoaded', fetchTodos);
+
+    // 1. GET ALL TODOS
+    async function fetchTodos() {
+        try {
+            const response = await fetch(API_BASE_URL);
+            const todos = await response.json();
+
+            const todoList = document.getElementById('todoList');
+            todoList.innerHTML = ''; // Clear current UI elements
+
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = 'todo-item';
+                li.innerHTML = `
+    <span class="todo-text" id="text-${todo.id}">${todo.content}</span>
+
+    <div class="actions">
+        <button class="btn-edit"
+            onclick='startEdit(${todo.id}, ${JSON.stringify(todo.content)})'>
+            Edit
+        </button>
+
+<!--        <button class="btn-delete"-->
+<!--            onclick="deleteTodo(${todo.id})">-->
+<!--            Delete-->
+<!--        </button>-->
+
+    <button class="btn-delete"
+    onclick="confirmDelete(${todo.id})">
+    Delete
+</button>
+    </div>
+`;
+                todoList.appendChild(li);
+            });
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+    // Handle Form Submit (Decides whether to Create or Update)
+    function handleSubmit() {
+        const input = document.getElementById('todoInput');
+        const content = input.value.trim();
+
+        if (!content) return;
+
+        if (editTodoId !== null) {
+            updateTodo(editTodoId, content);
+        } else {
+            createTodo(content);
+        }
+
+        input.value = '';
+    }
+
+    // 2. CREATE A TODO (POST)
+    async function createTodo(content) {
+        try {
+            await fetch(API_BASE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+            id: 0,
+            content: content
+            })
+            });
+            fetchTodos(); // Refresh list layout
+        } catch (error) {
+            console.error('Error creating todo:', error);
+        }
+    }
+
+    // Set UI state to update mode
+    function startEdit(id, currentContent) {
+        const input = document.getElementById('todoInput');
+        const submitBtn = document.getElementById('submitBtn');
+
+        input.value = currentContent;
+        input.focus();
+        submitBtn.innerText = 'Update';
+        editTodoId = id;
+    }
+
+    // 3. UPDATE A TODO (PUT)
+    async function updateTodo(id, updatedContent) {
+
+    try {
+
+        await fetch(`${API_BASE_URL}/${id}`, {
+
+            method: 'PUT',
+
+            headers: {
+                'Content-Type': 'application/json'
+            },
+
+            body: JSON.stringify({
+                id: id,
+                content: updatedContent
+            })
+
+        });
+
+        editTodoId = null;
+
+        document.getElementById('submitBtn').innerText = 'Add Task';
+
+        fetchTodos();
+
+    } catch (error) {
+
+        console.error('Error updating todo:', error);
+
+    }
+}
+    // 4. DELETE TODO
+    function confirmDelete(id){
+
+    const isConfirmed =
+        confirm("Are you sure you want to delete this todo?");
+
+    if(isConfirmed){
+        deleteTodo(id);
+    }
+}
+async function deleteTodo(id) {
+
+    try {
+
+        await fetch(`${API_BASE_URL}/${id}`, {
+            method: 'DELETE'
+        });
+
+        fetchTodos();
+
+    } catch (error) {
+
+        console.error('Error deleting todo:', error);
+
+    }
+}
+</script>
+</body>
+</html>
